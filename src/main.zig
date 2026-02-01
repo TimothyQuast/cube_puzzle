@@ -42,12 +42,59 @@ fn get_coords(point: u8) Point {
   }; 
 }
 
-fn get_points(piece: u12) [4] u8 {
-  const branches: u8 = @truncate(@mod(piece, 12));
-  _ = branches;
-  const root :u8 = @truncate(piece / 12);
+const Branches = packed struct {
+    leaf_axis_next: u1,
+    branch_up: u1, // 0 -- +, 1 -- -
+    branch_axis: u2, // 0 -- x, 1 -- y, 2 -- x, 3 -- impossible
+};
 
-  return &.{root, 0, 0, 0};
+fn get_points(piece: u12) ?[4]u8 {
+  const root :u8 = @truncate(piece / 12);
+  // now piece mod 12 is 0 to 11.
+  // 0 -- branch x-, leaves z
+  // 1 -- x+, z
+  // 2 -- x-, y
+  // 3 -- x+, y
+  
+  const root_p = get_coords(root);
+
+  const branches: Branches = @bitCast(@mod(piece, 12));
+  
+  const stem:u8 = try switch(branches.branch_axis) {  
+    0 => ( // x-axis
+        try switch (branches.branch_up) {
+            0 => (if(root_p.x == 0){return null;} else root - 1),
+            1 => (if(root_p.x == 5){return null;} else root + 1),
+        }
+    ),
+    1 => ( // y-axis
+        try switch (branches.branch_up) {
+            0 => (if(root_p.y == 0){return null;} else root - 6),
+            1 => (if(root_p.y == 5){return null;} else root + 6),
+        }
+    ),
+    2 => ( // z-axis
+        try switch (branches.branch_up) {
+            0 => (if(root_p.z == 0){return null;} else root - 36),
+            1 => (if(root_p.z == 5){return null;} else root + 36),
+        }
+    ),
+    else => {
+        std.debug.print("branches too big");
+        return null;
+    },
+  };
+
+  const leaf1: u8 = try switch(branches.leaf_axis_next) {
+      0 => ( // leaf axis is previous
+       7 
+    ),
+      1 => (7)
+  };
+
+  
+
+  return &.{root, stem, leaf1, 0};
 
 } 
 
