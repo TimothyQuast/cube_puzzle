@@ -24,14 +24,14 @@ const cube_puzzle = @import("cube_puzzle");
 //
 // Actually lets just use a bigger onee.
 // 6 x 6 x 6 x 12 = 2592.
-// so use u12. from 0 2591.
+// so use u16. from 0 2591.
 // branchdir = @mod(pos, 12); 
 // rootx = @mod( pos /_ 12, 6); 
 // rooty = @mod( pos /_ 72, 6); 
 // rootz = @mod( pos /_ 432, 6); 
 //
 // point: u8
-// piece: u12
+// piece: u16
 //
 
 fn get_coords(point: u8) Point {
@@ -48,7 +48,7 @@ const Branches = packed struct {
     branch_axis: u2, // 0 -- x, 1 -- y, 2 -- x, 3 -- impossible
 };
 
-fn get_points(piece: u12) ?[4]u8 {
+fn get_points(piece: u16) ?[4]u8 {
   const root :u8 = @truncate(piece / 12);
   // now piece mod 12 is 0 to 11.
   // 0 -- branch x-, leaves z
@@ -128,8 +128,32 @@ fn get_points(piece: u12) ?[4]u8 {
 const Point = packed struct {
     x: u3,
     y: u3,
-    z: u3
+    z: u3,
+
+
 };
+
+const piece_point_names = &.{"root", "stem", "leaf_d", "leaf_u"};
+
+pub fn debug_piece(piece: u16) void {
+    
+    std.debug.print("Piece {}: ", .{piece});
+
+    const points: ?[4]u8  = get_points(piece);
+
+    if (points) |ps| {
+        inline for (0..4) |i| {
+            const coords: Point = get_coords(ps[i]);
+            std.debug.print("|{s}: x={}, y={}, z={}| ", .{piece_point_names[i], coords.x, coords.y, coords.z});
+        }
+    } else {
+
+        std.debug.print("null", .{});
+    }
+
+
+    std.debug.print("\n", .{});
+}
 
 pub fn step(
   allocator: std.mem.Allocator,
@@ -140,8 +164,8 @@ pub fn step(
     _ = allocator;
 
     var path_buf: [64]u8 = undefined;
-    var piece_buf: [1024] u8 = undefined;
-    var arrangement: [54]u8 = undefined;
+    var piece_buf: [1024]u8 = undefined;
+    var arrangement: [108]u8 = undefined;
     if (i == 1) {
         // make step 1 file
         const step1_path = try std.fmt.bufPrint(
@@ -154,8 +178,11 @@ pub fn step(
             step1_file, io, &piece_buf
         );
 
-        arrangement[0] = 17;
-        arrangement[1] = 37;
+        const piece1:u16 = 85; 
+
+        arrangement[0] = (piece1 >> 8) << 8;
+        arrangement[1] = (piece1 << 8) >> 8;
+
         try writer.interface.writeAll(
             arrangement[0..2]
         );
@@ -197,6 +224,10 @@ pub fn main(init: std.process.Init) !void {
 
     for (1..54) |i| {
         try step(arena, io, i);
+    }
+
+    for (84..100) |i| {
+        debug_piece(@intCast(i));
     }
 
 }
